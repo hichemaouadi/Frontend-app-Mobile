@@ -1,0 +1,2 @@
+/Users/elyes/Desktop/sofima/android/app/.cxx/Debug/2i3s1t4f/x86/CMakeFiles/edit_cache.dir
+/Users/elyes/Desktop/sofima/android/app/.cxx/Debug/2i3s1t4f/x86/CMakeFiles/rebuild_cache.dir
