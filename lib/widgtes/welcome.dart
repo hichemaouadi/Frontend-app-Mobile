@@ -5,6 +5,9 @@ import 'package:sofima/articles/articles.dart';
 import 'package:sofima/add/addarticle.dart';
 import 'package:sofima/admin/admin.dart';
 import 'package:sofima/rendement/rendement.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:sofima/Auth/login.dart';
 
 class Welcome extends StatefulWidget {
   const Welcome({super.key});
@@ -17,12 +20,11 @@ class _WelcomeState extends State<Welcome> {
   FlutterSecureStorage storage = FlutterSecureStorage();
   String userType = "";
 
-  // Cette fonction vérifie le type d'utilisateur
+  // Vérifie le type d'utilisateur
   Future<void> veriftypeUser() async {
     String? admin = await storage.read(key: "admin");
     String? superadmin = await storage.read(key: "superadmin");
     String? utilisateur = await storage.read(key: "utilisateur");
-    print("Navigation: $admin , $superadmin , $utilisateur");
 
     if (admin == "true") {
       setState(() {
@@ -46,7 +48,7 @@ class _WelcomeState extends State<Welcome> {
   @override
   void initState() {
     super.initState();
-    veriftypeUser(); // Vérifie le type d'utilisateur au démarrage
+    veriftypeUser();
   }
 
   @override
@@ -56,7 +58,7 @@ class _WelcomeState extends State<Welcome> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         title: Text(
-          "Acceuil",
+          "Accueil",
           style: GoogleFonts.dmSans(
             color: Colors.white,
             fontSize: 18,
@@ -65,126 +67,98 @@ class _WelcomeState extends State<Welcome> {
           ),
         ),
         iconTheme: IconThemeData(
-          color:
-              Colors.white, // Changer la couleur de l'icône (flèche de retour)
+          color: Colors.white,
         ),
       ),
-      body: ListView(
-        children: [
-          SizedBox(
-            height: 20,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  SizedBox(
-                    height: 20,
-                  ),
-                  InkWell(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => HomeScreen()));
-                      },
-                      child: Image.asset(
-                        "assets/accueil-2.png",
-                        height: 100,
-                        width: 100,
-                      )),
-                  Text(
-                    "Articles",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  )
-                ],
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(color: Colors.black),
+              child: Text(
+                'Menu',
+                style: TextStyle(color: Colors.white, fontSize: 24),
               ),
-              if (userType == "admin" || userType == "superadmin")
-                Column(
-                  children: [
-                    InkWell(
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) => Rendement()));
-                        },
-                        child: Image.asset(
-                          "assets/rendement.png",
-                          height: 100,
-                          width: 100,
-                        )),
-                    Text(
-                      "Rendement",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
-            ],
-          ),
-          SizedBox(
-            height: 100,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Column(
-                children: [
-                  InkWell(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => AddArticle()));
-                      },
-                      child: Image.asset(
-                        "assets/plus-2.png",
-                        height: 100,
-                        width: 100,
-                      )),
-                  Text(
-                    "Ajouter un Article",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  )
-                ],
+            ),
+            ListTile(
+              leading: Icon(Icons.article),
+              title: Text('Articles'),
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => HomeScreen()));
+              },
+            ),
+            if (userType == "admin" || userType == "superadmin")
+              ListTile(
+                leading: Icon(Icons.assessment),
+                title: Text('Rendement'),
+                onTap: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => Rendement()));
+                },
               ),
-            ],
-          ),
-          // Ajouter un quatrième bouton si l'utilisateur est un admin ou superadmin
-          if (userType == "admin" || userType == "superadmin") ...[
-            SizedBox(
-              height: 50,
+            ListTile(
+              leading: Icon(Icons.add),
+              title: Text('Ajouter un Article'),
+              onTap: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => AddArticle()));
+              },
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(context,
-                            MaterialPageRoute(builder: (context) => Admin()));
-                      },
-                      child: Image.asset(
-                        "assets/users.png", // Utilise une icône différente pour ce bouton
-                        height: 100,
-                        width: 100,
-                      ),
-                    ),
-                    Text(
-                      "Admin Actions",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ],
+            if (userType == "admin" || userType == "superadmin")
+              ListTile(
+                leading: Icon(Icons.admin_panel_settings),
+                title: Text('Admin Actions'),
+                onTap: () {
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => Admin()));
+                },
+              ),
+            Divider(),
+            ListTile(
+              leading: Icon(Icons.logout),
+              title: Text('Déconnexion'),
+              onTap: () async {
+                String? username = await storage.read(key: "username");
+                String? token = await storage.read(key: "token");
+                if (username != null && token != null) {
+                  await logoutUser(context, username, token);
+                }
+              },
             ),
-          ]
-        ],
+          ],
+        ),
+      ),
+      body: Center(
+        child: Text(
+          "Bienvenue ! Choisissez une option dans le menu.",
+          style: TextStyle(fontSize: 18),
+        ),
       ),
     );
+  }
+
+  Future<void> logoutUser(
+      BuildContext context, String username, String token) async {
+    final response = await http.post(
+      Uri.parse('http://192.168.43.194:8000/logout/'),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": username,
+        "token": token,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      await storage.deleteAll();
+      // Redirige en utilisant la classe directement
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Login()),
+      );
+    } else {
+      print("Erreur de déconnexion : ${response.body}");
+    }
   }
 }

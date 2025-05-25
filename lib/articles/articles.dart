@@ -14,152 +14,272 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<dynamic> articles = [];
-  List<dynamic> filteredArticles = [];
-  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  List<dynamic>? articles;
+  List<dynamic>? filteredArticles;
+  String? username;
+  final FlutterSecureStorage storage = FlutterSecureStorage();
   final TextEditingController _searchController = TextEditingController();
-  late StreamSubscription<List<dynamic>> _articlesSubscription;
-  bool _isLoading = true;
-  final String _baseUrl = "http://192.168.43.194:8000";
+
+  Future<bool> getArticles() async {
+    final url = Uri.parse("http://192.168.43.194:8000/getArticles/");
+    final response =
+        await http.get(url, headers: {'Content-Type': 'application/json'});
+
+    if (response.statusCode == 200) {
+      if (!mounted) return false;
+      setState(() {
+        articles = json.decode(response.body)["articles"];
+        filteredArticles = articles;
+      });
+      username = await storage.read(key: "username");
+      await storage.read(key: "admin");
+      await storage.read(key: "superadmin");
+      await storage.read(key: "utilisateur");
+      return true;
+    } else {
+      print("Erreur ${response.statusCode}");
+      return false;
+    }
+  }
+
+  Future<bool> modification_quantite(
+      int quantite, String reference, String mode) async {
+    final url = Uri.parse("http://192.168.43.194:8000/update_quantite/");
+    final body = jsonEncode({
+      "quantite": quantite,
+      "reference_article": reference,
+      "mode": mode,
+    });
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    return response.statusCode == 200;
+  }
+
+  Future<bool> delete_article(String reference) async {
+    final url = Uri.parse("http://192.168.43.194:8000/deleteAricle/");
+    final body = jsonEncode({"reference": reference});
+    final response = await http.delete(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    return response.statusCode == 200;
+  }
+
+  void _showEditQuantiteDialog(String reference, int quantiteActuelle) {
+    final TextEditingController controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => SingleChildScrollView(
+        child: AlertDialog(
+          title: const Text('Modifier la quantité'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Référence : $reference\nQuantité initiale : $quantiteActuelle',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 15, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Nouvelle valeur',
+                  hintText: 'Entrer une quantité',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Choisissez l'action à appliquer :",
+                style: GoogleFonts.dmSans(fontSize: 14, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    label: const Text('Remplacer'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                    onPressed: () async {
+                      int? value = int.tryParse(controller.text);
+                      if (value != null) {
+                        bool? confirmed = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Confirmation'),
+                            content: Text(
+                                'Voulez-vous vraiment remplacer la quantité de l\'article "$reference" par $value ?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Annuler'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Confirmer'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await _handleModifyQuantite(reference, value, "set");
+                          Navigator.pop(context);
+                          _showActionSnackBar(
+                              "remplacée", value, quantiteActuelle, "set");
+                        }
+                      }
+                    },
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.add_circle_outline,
+                        color: Colors.white),
+                    label: const Text('Ajouter'),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                    onPressed: () async {
+                      int? value = int.tryParse(controller.text);
+                      if (value != null) {
+                        bool? confirmed = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Confirmation'),
+                            content: Text(
+                                'Voulez-vous vraiment ajouter $value à la quantité de l\'article "$reference" ?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Annuler'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Confirmer'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await _handleModifyQuantite(reference, value, "add");
+                          Navigator.pop(context);
+                          _showActionSnackBar(
+                              "ajoutée", value, quantiteActuelle, "add");
+                        }
+                      }
+                    },
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.remove_circle_outline,
+                        color: Colors.white),
+                    label: const Text('Retirer'),
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange),
+                    onPressed: () async {
+                      int? value = int.tryParse(controller.text);
+                      if (value != null) {
+                        bool? confirmed = await showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Confirmation'),
+                            content: Text(
+                                'Voulez-vous vraiment retirer $value de la quantité de l\'article "$reference" ?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Annuler'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Confirmer'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirmed == true) {
+                          await _handleModifyQuantite(
+                              reference, value, "remove");
+                          Navigator.pop(context);
+                          _showActionSnackBar(
+                              "retirée", value, quantiteActuelle, "remove");
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showActionSnackBar(String action, int value, int initial, String mode) {
+    String msg = "";
+    switch (mode) {
+      case "set":
+        msg = "La quantité a été remplacée par $value (avant : $initial)";
+        break;
+      case "add":
+        msg = "$value ajoutée à la quantité (avant : $initial)";
+        break;
+      case "remove":
+        msg = "$value retirée de la quantité (avant : $initial)";
+        break;
+      default:
+        msg = "Action effectuée";
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
+
+  Future<void> _handleModifyQuantite(
+      String reference, int quantite, String mode) async {
+    bool success = await modification_quantite(quantite, reference, mode);
+    if (!mounted) return;
+    if (success) {
+      await getArticles();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de la modification.')),
+      );
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    getArticles();
     _searchController.addListener(_filterArticles);
   }
 
-  Future<void> _initializeData() async {
-    await _loadArticles();
-    _setupArticlesStream();
-  }
-
-  Future<void> _loadArticles() async {
-    setState(() => _isLoading = true);
-    try {
-      final response = await http.get(
-        Uri.parse("$_baseUrl/getArticles/"),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          articles = data["articles"] ?? [];
-          filteredArticles = List.from(articles);
-        });
-      } else {
-        throw Exception("Erreur ${response.statusCode}");
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur de chargement: $e')),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _setupArticlesStream() {
-    _articlesSubscription = Stream.periodic(const Duration(seconds: 2))
-        .asyncMap((_) => _fetchArticles())
-        .listen((newArticles) {
-      if (mounted) {
-        setState(() {
-          articles = newArticles;
-          filteredArticles = List.from(articles);
-        });
-      }
-    }, onError: (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur de stream: $error')),
-      );
-    });
-  }
-
-  Future<List<dynamic>> _fetchArticles() async {
-    try {
-      final response = await http.get(
-        Uri.parse("$_baseUrl/getArticles/"),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body)["articles"] ?? [];
-      } else {
-        throw Exception("Erreur ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Erreur de récupération: $e");
-      return [];
-    }
-  }
-
-  Future<void> _refreshArticles() async {
-    await _loadArticles();
-  }
-
-  Future<bool> _modifyQuantity(int quantity, String reference) async {
-    try {
-      final response = await http.post(
-        Uri.parse("$_baseUrl/updateQ/"),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "quantite": quantity,
-          "reference_article": reference,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quantité mise à jour avec succès')),
-        );
-        return true;
-      }
-      throw Exception("Erreur ${response.statusCode}");
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur de mise à jour: $e')),
-      );
-      return false;
-    }
-  }
-
-  Future<bool> _deleteArticle(String reference) async {
-    try {
-      final response = await http.delete(
-        Uri.parse("$_baseUrl/deleteAricle/"),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({"reference": reference}),
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Article supprimé avec succès')),
-        );
-        return true;
-      }
-      throw Exception("Erreur ${response.statusCode}");
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur de suppression: $e')),
-      );
-      return false;
-    }
-  }
-
   void _filterArticles() {
-    final query = _searchController.text.toLowerCase();
+    String query = _searchController.text.toLowerCase();
     setState(() {
-      filteredArticles = articles.where((article) {
-        return article["reference"].toString().toLowerCase().contains(query);
+      filteredArticles = articles?.where((article) {
+        return article["reference"].toLowerCase().contains(query);
       }).toList();
     });
   }
 
   @override
   void dispose() {
-    _articlesSubscription.cancel();
+    _searchController.removeListener(_filterArticles);
     _searchController.dispose();
     super.dispose();
   }
@@ -174,36 +294,36 @@ class _HomeScreenState extends State<HomeScreen> {
           "Liste des Articles",
           style: GoogleFonts.dmSans(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshArticles,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : filteredArticles.isEmpty
-                ? const Center(child: Text("Aucun article disponible"))
-                : Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              labelText: 'Recherche par référence',
-                              labelStyle: GoogleFonts.dmSans(),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+      body: (articles == null || filteredArticles == null)
+          ? const Center(child: CircularProgressIndicator())
+          : filteredArticles!.isEmpty
+              ? const Center(child: Text("Aucun article trouvé."))
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            labelText: 'Recherche par référence',
+                            labelStyle: GoogleFonts.dmSans(),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                         ),
-                        Expanded(
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
                           child: SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: DataTable(
@@ -213,60 +333,70 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: const Color(0xFFC0C0C0),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              columns: const [
+                              columnSpacing: 35,
+                              columns: [
                                 DataColumn(label: Text('Référence')),
                                 DataColumn(label: Text('Description')),
+                                DataColumn(label: Text('Ordre')),
                                 DataColumn(label: Text('Quantité')),
-                                DataColumn(label: Text('Valider')),
                                 DataColumn(label: Text('Supprimer')),
                               ],
-                              rows: filteredArticles.map((article) {
-                                final quantityController =
-                                    TextEditingController(
-                                  text: article["quantite"].toString(),
-                                );
-
+                              rows: filteredArticles!.map((article) {
+                                int quantite = article["quantite"];
+                                String reference = article["reference"];
                                 return DataRow(
-                                  key: ValueKey(article["reference"]),
+                                  color:
+                                      MaterialStateProperty.resolveWith<Color?>(
+                                    (Set<MaterialState> states) {
+                                      return (quantite < 100)
+                                          ? Colors.red.shade100
+                                          : null;
+                                    },
+                                  ),
                                   cells: [
                                     DataCell(
                                       InkWell(
-                                        onTap: () => Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => Composant(
-                                              reference: article["reference"],
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => Composant(
+                                                  reference: reference),
                                             ),
-                                          ),
-                                        ),
-                                        child: Text(article["reference"]),
-                                      ),
-                                    ),
-                                    DataCell(Text(article["description"])),
-                                    DataCell(
-                                      SizedBox(
-                                        width: 60,
-                                        child: TextField(
-                                          controller: quantityController,
-                                          keyboardType: TextInputType.number,
-                                          decoration: InputDecoration(
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
+                                          );
+                                        },
+                                        child: Text(
+                                          reference,
+                                          style: GoogleFonts.dmSans(
+                                            fontWeight: FontWeight.w700,
                                           ),
                                         ),
                                       ),
                                     ),
+                                    DataCell(Text(
+                                        article["description"].toString())),
+                                    DataCell(Text(article["ordre"].toString())),
                                     DataCell(
-                                      IconButton(
-                                        icon: const Icon(Icons.check,
-                                            color: Colors.green),
-                                        onPressed: () => _modifyQuantity(
-                                          int.tryParse(
-                                                  quantityController.text) ??
-                                              0,
-                                          article["reference"],
+                                      GestureDetector(
+                                        onTap: () => _showEditQuantiteDialog(
+                                            reference, quantite),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blueAccent
+                                                .withOpacity(0.08),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            quantite.toString(),
+                                            style: const TextStyle(
+                                              color: Colors.blueAccent,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -274,8 +404,54 @@ class _HomeScreenState extends State<HomeScreen> {
                                       IconButton(
                                         icon: const Icon(Icons.delete,
                                             color: Colors.red),
-                                        onPressed: () => _showDeleteDialog(
-                                            article["reference"]),
+                                        onPressed: () async {
+                                          final confirm =
+                                              await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text('Confirmation'),
+                                              content: Text(
+                                                  'Voulez-vous vraiment supprimer l\'article "$reference" ?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, false),
+                                                  child: const Text('Annuler'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                          context, true),
+                                                  child:
+                                                      const Text('Supprimer'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (confirm == true) {
+                                            bool deleted =
+                                                await delete_article(reference);
+                                            if (deleted && mounted) {
+                                              await getArticles();
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                      'Article supprimé avec succès !'),
+                                                ),
+                                              );
+                                            } else if (mounted) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                      'Erreur lors de la suppression.'),
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
                                       ),
                                     ),
                                   ],
@@ -284,34 +460,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-      ),
-    );
-  }
-
-  Future<void> _showDeleteDialog(String reference) async {
-    return showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmation'),
-        content: const Text('Voulez-vous vraiment supprimer cet article ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await _deleteArticle(reference);
-              await _refreshArticles();
-            },
-            child: const Text('Confirmer'),
-          ),
-        ],
-      ),
+                ),
     );
   }
 }
