@@ -18,16 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic>? filteredArticles;
   String? username;
   final FlutterSecureStorage storage = FlutterSecureStorage();
-  List<dynamic>? articles;
-  List<dynamic>? filteredArticles;
-  String? username;
-  final FlutterSecureStorage storage = FlutterSecureStorage();
   final TextEditingController _searchController = TextEditingController();
-
-  Future<bool> getArticles() async {
-    final url = Uri.parse("http://192.168.43.194:8000/getArticles/");
-    final response =
-        await http.get(url, headers: {'Content-Type': 'application/json'});
 
   Future<bool> getArticles() async {
     final url = Uri.parse("http://192.168.43.194:8000/getArticles/");
@@ -279,10 +270,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _filterArticles() {
     String query = _searchController.text.toLowerCase();
-    String query = _searchController.text.toLowerCase();
     setState(() {
-      filteredArticles = articles?.where((article) {
-        return article["reference"].toLowerCase().contains(query);
       filteredArticles = articles?.where((article) {
         return article["reference"].toLowerCase().contains(query);
       }).toList();
@@ -291,7 +279,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _searchController.removeListener(_filterArticles);
     _searchController.removeListener(_filterArticles);
     _searchController.dispose();
     super.dispose();
@@ -309,35 +296,10 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            height: 1.71,
           ),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: (articles == null || filteredArticles == null)
-          ? const Center(child: CircularProgressIndicator())
-          : filteredArticles!.isEmpty
-              ? const Center(child: Text("Aucun article trouvé."))
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            labelText: 'Recherche par référence',
-                            labelStyle: GoogleFonts.dmSans(),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
       body: (articles == null || filteredArticles == null)
           ? const Center(child: CircularProgressIndicator())
           : filteredArticles!.isEmpty
@@ -373,11 +335,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               columnSpacing: 35,
                               columns: [
-                              columnSpacing: 35,
-                              columns: [
                                 DataColumn(label: Text('Référence')),
                                 DataColumn(label: Text('Description')),
-                                DataColumn(label: Text('Ordre')),
                                 DataColumn(label: Text('Ordre')),
                                 DataColumn(label: Text('Quantité')),
                                 DataColumn(label: Text('Supprimer')),
@@ -386,14 +345,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 int quantite = article["quantite"];
                                 String reference = article["reference"];
                                 return DataRow(
-                                  color:
-                                      MaterialStateProperty.resolveWith<Color?>(
-                                    (Set<MaterialState> states) {
-                                      return (quantite < 100)
-                                          ? Colors.red.shade100
-                                          : null;
-                                    },
-                                  ),
                                   color:
                                       MaterialStateProperty.resolveWith<Color?>(
                                     (Set<MaterialState> states) {
@@ -425,9 +376,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                     DataCell(Text(
                                         article["description"].toString())),
                                     DataCell(Text(article["ordre"].toString())),
-                                    DataCell(Text(
-                                        article["description"].toString())),
-                                    DataCell(Text(article["ordre"].toString())),
                                     DataCell(
                                       GestureDetector(
                                         onTap: () => _showEditQuantiteDialog(
@@ -449,7 +397,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                               fontSize: 16,
                                             ),
                                           ),
-                                          keyboardType: TextInputType.number,
                                         ),
                                       ),
                                     ),
@@ -515,13 +462,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
-                ),
                 ),
     );
   }

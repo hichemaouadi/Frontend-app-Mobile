@@ -21,7 +21,6 @@ class _WelcomeState extends State<Welcome> {
   String userType = "";
 
   // Vérifie le type d'utilisateur
-  // Vérifie le type d'utilisateur
   Future<void> veriftypeUser() async {
     String? admin = await storage.read(key: "admin");
     String? superadmin = await storage.read(key: "superadmin");
@@ -50,7 +49,6 @@ class _WelcomeState extends State<Welcome> {
   void initState() {
     super.initState();
     veriftypeUser();
-    veriftypeUser();
   }
 
   @override
@@ -61,7 +59,6 @@ class _WelcomeState extends State<Welcome> {
         backgroundColor: Colors.black,
         title: Text(
           "Accueil",
-          "Accueil",
           style: GoogleFonts.dmSans(
             color: Colors.white,
             fontSize: 18,
@@ -71,74 +68,8 @@ class _WelcomeState extends State<Welcome> {
         ),
         iconTheme: IconThemeData(
           color: Colors.white,
-          color: Colors.white,
         ),
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.black),
-              child: Text(
-                'Menu',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.article),
-              title: Text('Articles'),
-              onTap: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => HomeScreen()));
-              },
-            ),
-            if (userType == "admin" || userType == "superadmin")
-              ListTile(
-                leading: Icon(Icons.assessment),
-                title: Text('Rendement'),
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => Rendement()));
-                },
-              ),
-            ListTile(
-              leading: Icon(Icons.add),
-              title: Text('Ajouter un Article'),
-              onTap: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => AddArticle()));
-              },
-            ),
-            if (userType == "admin" || userType == "superadmin")
-              ListTile(
-                leading: Icon(Icons.admin_panel_settings),
-                title: Text('Admin Actions'),
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => Admin()));
-                },
-              ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.logout),
-              title: Text('Déconnexion'),
-              onTap: () async {
-                String? username = await storage.read(key: "username");
-                String? token = await storage.read(key: "token");
-                if (username != null && token != null) {
-                  await logoutUser(context, username, token);
-                }
-              },
-            ),
-          ],
-        ),
-      ),
-      body: Center(
-        child: Text(
-          "Bienvenue ! Choisissez une option dans le menu.",
-          style: TextStyle(fontSize: 18),
-        ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,

@@ -37,27 +37,7 @@ class _ComposantState extends State<Composant> {
     try {
       final response = await http.post(url,
           headers: {'Content-Type': 'application/json'}, body: body);
-    try {
-      final response = await http.post(url,
-          headers: {'Content-Type': 'application/json'}, body: body);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          composants = data["composants"] ?? [];
-          filteredComposant = List.from(composants);
-          hasLowStock = composants.any((c) {
-            final q = int.tryParse(c["quantite"].toString()) ?? 0;
-            return q < 100;
-          });
-        });
-        return true;
-      } else {
-        print("Erreur serveur: ${response.statusCode}");
-        return false;
-      }
-    } catch (e) {
-      print("Erreur getComposant: $e");
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -81,7 +61,6 @@ class _ComposantState extends State<Composant> {
 
   Future<bool> AddComposant(
       int quantite, String reference, String description, int ordre) async {
-      int quantite, String reference, String description, int ordre) async {
     final url = Uri.parse("http://192.168.43.194:8000/addC/");
     final body = jsonEncode({
       "quantite": quantite,
@@ -89,12 +68,8 @@ class _ComposantState extends State<Composant> {
       "referenceA": widget.reference,
       "description": description,
       "ordre": ordre,
-      "ordre": ordre,
     });
 
-    try {
-      final response = await http.post(url,
-          headers: {'Content-Type': 'application/json'}, body: body);
     try {
       final response = await http.post(url,
           headers: {'Content-Type': 'application/json'}, body: body);
@@ -138,19 +113,6 @@ class _ComposantState extends State<Composant> {
       final response = await http.post(url,
           headers: {'Content-Type': 'application/json'}, body: body);
 
-    try {
-      final response = await http.post(url,
-          headers: {'Content-Type': 'application/json'}, body: body);
-
-      if (response.statusCode == 200) {
-        await getComposant();
-        return true;
-      } else {
-        print("Erreur update: ${response.statusCode}");
-        return false;
-      }
-    } catch (e) {
-      print("Erreur modification_quantite: $e");
       if (response.statusCode == 200) {
         await getComposant();
         return true;
@@ -175,29 +137,6 @@ class _ComposantState extends State<Composant> {
         body: body,
       );
 
-    try {
-      final response = await http.delete(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          composants.removeWhere((c) => c["reference"] == reference);
-          filteredComposant.removeWhere((c) => c["reference"] == reference);
-          hasLowStock = composants.any((c) {
-            final q = int.tryParse(c["quantite"].toString()) ?? 0;
-            return q < 100;
-          });
-        });
-        return true;
-      } else {
-        print("Erreur suppression: ${response.statusCode}");
-        return false;
-      }
-    } catch (e) {
-      print("Erreur deleteComp: $e");
       if (response.statusCode == 200) {
         setState(() {
           composants.removeWhere((c) => c["reference"] == reference);
@@ -406,11 +345,6 @@ class _ComposantState extends State<Composant> {
         TextEditingController();
     final TextEditingController _rControler = TextEditingController();
     final TextEditingController _ordreController = TextEditingController();
-    final TextEditingController _quantiteControler = TextEditingController();
-    final TextEditingController _descriptionController =
-        TextEditingController();
-    final TextEditingController _rControler = TextEditingController();
-    final TextEditingController _ordreController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(
@@ -419,32 +353,22 @@ class _ComposantState extends State<Composant> {
           "Composants de ${widget.reference}",
           style: GoogleFonts.dmSans(
             color: hasLowStock ? Colors.red : Colors.white,
-            color: hasLowStock ? Colors.red : Colors.white,
             fontSize: 18,
             fontWeight: FontWeight.w700,
           ),
         ),
         iconTheme: IconThemeData(color: Colors.white),
-        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: Container(
               padding: EdgeInsets.all(8),
-              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.blue,
                 color: Colors.blue,
               ),
               child: Icon(Icons.add, color: Colors.white),
             ),
-              child: Icon(Icons.add, color: Colors.white),
-            ),
             onPressed: () {
-              _quantiteControler.clear();
-              _descriptionController.clear();
-              _rControler.clear();
-              _ordreController.clear();
               _quantiteControler.clear();
               _descriptionController.clear();
               _rControler.clear();
@@ -453,100 +377,6 @@ class _ComposantState extends State<Composant> {
                 context: context,
                 builder: (BuildContext context) {
                   return AlertDialog(
-                    content: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          TextField(
-                            controller: _rControler,
-                            decoration: InputDecoration(
-                              hintText: "Référence",
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: _quantiteControler,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: "Quantité",
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: _descriptionController,
-                            decoration: InputDecoration(
-                              hintText: "Description",
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: _ordreController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: "Ordre",
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    actions: [
-                      ElevatedButton(
-                        onPressed: () async {
-                          if (_rControler.text.isEmpty ||
-                              _quantiteControler.text.isEmpty ||
-                              _ordreController.text.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    "Veuillez remplir tous les champs obligatoires."),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          int? quantite =
-                              int.tryParse(_quantiteControler.text.trim());
-                          int? ordre =
-                              int.tryParse(_ordreController.text.trim());
-                          if (quantite == null || ordre == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                    "Quantité et Ordre doivent être des nombres valides."),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          bool success = await AddComposant(
-                            quantite,
-                            _rControler.text.trim(),
-                            _descriptionController.text.trim(),
-                            ordre,
-                          );
-                          Navigator.pop(context);
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Composant ajouté avec succès !"),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Erreur lors de l'ajout."),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        child: Text("Ajouter composant"),
                     content: SingleChildScrollView(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
