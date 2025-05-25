@@ -12,47 +12,63 @@ class AddArticle extends StatefulWidget {
 }
 
 class _AddArticleState extends State<AddArticle> {
-  TextEditingController _quantiteControler = TextEditingController();
-  TextEditingController _rControler = TextEditingController();
-  TextEditingController _dControler = TextEditingController();
+  final TextEditingController _quantiteController = TextEditingController();
+  final TextEditingController _referenceController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _ordreController = TextEditingController();
 
-  Stream<List<dynamic>> getArticlesStream() async* {
-    final url = Uri.parse("http://192.168.43.194:8000/getArticles/");
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-    while (true) {
-      // Boucle infinie pour écouter en continu
-      await Future.delayed(
-          Duration(seconds: 2)); // Vérifie toutes les 2 secondes
-
-      final response =
-          await http.get(url, headers: {'Content-Type': 'application/json'});
-
-      if (response.statusCode == 200) {
-        yield json.decode(response.body)["articles"];
-      } else {
-        print("Erreur ${response.statusCode}");
-        yield []; // Retourne une liste vide en cas d'erreur
-      }
-    }
-  }
-
-  Future<bool> AddArticle(
-      int quantite, String reference, String description) async {
+  // Fonction pour ajouter un article (POST)
+  Future<bool> addArticle(
+      int quantite, String reference, String description, int ordre) async {
     final url = Uri.parse("http://192.168.43.194:8000/adda/");
     final body = jsonEncode({
       "quantite": quantite,
       "reference": reference,
-      "description": description
+      "description": description,
+      "ordre": ordre,
     });
-    final response = await http.post(url,
-        headers: {'Content-Type': 'application/json'}, body: body);
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
 
     if (response.statusCode == 201) {
-      print("ajout terminé");
+      print("Ajout terminé");
       return true;
     } else {
       print("Erreur ${response.statusCode}");
       return false;
+    }
+  }
+
+  // Fonction appelée au clic du bouton
+  void _onSubmit() async {
+    if (_formKey.currentState!.validate()) {
+      final quantite = int.parse(_quantiteController.text.trim());
+      final reference = _referenceController.text.trim();
+      final description = _descriptionController.text.trim();
+      final ordre = int.parse(_ordreController.text.trim());
+
+      bool success = await addArticle(quantite, reference, description, ordre);
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Article ajouté avec succès')),
+        );
+
+        _quantiteController.clear();
+        _referenceController.clear();
+        _descriptionController.clear();
+        _ordreController.clear();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'ajout de l\'article')),
+        );
+      }
     }
   }
 
@@ -71,66 +87,95 @@ class _AddArticleState extends State<AddArticle> {
             height: 1.71,
           ),
         ),
-        iconTheme: IconThemeData(
-          color:
-              Colors.white, // Changer la couleur de l'icône (flèche de retour)
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextField(
-                controller: _rControler,
-                decoration: InputDecoration(
-                  hintText: "reference",
-                  hintStyle: GoogleFonts.dmSans(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextFormField(
+                  controller: _referenceController,
+                  decoration: InputDecoration(
+                    hintText: "Référence",
+                    hintStyle: GoogleFonts.dmSans(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? "Veuillez entrer une référence"
+                      : null,
                 ),
-              ),
-              SizedBox(
-                height: 16,
-              ),
-              TextField(
-                controller: _dControler,
-                decoration: InputDecoration(
-                  hintText: "decription",
-                  hintStyle: GoogleFonts.dmSans(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: InputDecoration(
+                    hintText: "Description",
+                    hintStyle: GoogleFonts.dmSans(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
+                  validator: (value) => value == null || value.isEmpty
+                      ? "Veuillez entrer une description"
+                      : null,
                 ),
-              ),
-              SizedBox(
-                height: 16,
-              ),
-              TextField(
-                controller: _quantiteControler,
-                decoration: InputDecoration(
-                  hintText: "quantité",
-                  hintStyle: GoogleFonts.dmSans(),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _quantiteController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Quantité",
+                    hintStyle: GoogleFonts.dmSans(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Veuillez entrer une quantité";
+                    }
+                    if (int.tryParse(value) == null) {
+                      return "La quantité doit être un nombre entier";
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              InkWell(
-                onTap: () {
-                  AddArticle(int.parse(_quantiteControler.text),
-                      _rControler.text, _dControler.text);
-                  Navigator.pop(context);
-                },
-                child: Container(
-                    width: 400.28,
-                    height: 43.74,
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _ordreController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: "Ordre",
+                    hintStyle: GoogleFonts.dmSans(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Veuillez entrer un ordre";
+                    }
+                    if (int.tryParse(value) == null) {
+                      return "L'ordre doit être un nombre entier";
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                InkWell(
+                  onTap: _onSubmit,
+                  child: Container(
+                    width: 400,
+                    height: 44,
                     decoration: ShapeDecoration(
-                      color: Color(0xFF1A1A27),
+                      color: const Color(0xFF1A1A27),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5.47),
+                        borderRadius: BorderRadius.circular(5.5),
                       ),
                     ),
                     child: Center(
@@ -138,13 +183,15 @@ class _AddArticleState extends State<AddArticle> {
                         "Ajouter l'article",
                         style: GoogleFonts.dmSans(
                           color: Colors.white,
-                          fontSize: 14.58,
+                          fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                    )),
-              )
-            ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
