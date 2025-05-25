@@ -27,12 +27,28 @@ class Modification {
 
 class Rendement extends StatefulWidget {
   const Rendement({Key? key}) : super(key: key);
+  const Rendement({Key? key}) : super(key: key);
 
   @override
+  _RendementState createState() => _RendementState();
   _RendementState createState() => _RendementState();
 }
 
 class _RendementState extends State<Rendement> {
+  Map<String, List<Modification>> modificationsSemaineDerniere = {};
+  Map<String, List<Modification>> modificationsCetteSemaine = {};
+  bool isLoading = true;
+  String? error;
+
+  final List<String> ordreJours = [
+    'Lundi',
+    'Mardi',
+    'Mercredi',
+    'Jeudi',
+    'Vendredi',
+    'Samedi',
+    'Dimanche',
+  ];
   Map<String, List<Modification>> modificationsSemaineDerniere = {};
   Map<String, List<Modification>> modificationsCetteSemaine = {};
   bool isLoading = true;
@@ -141,6 +157,9 @@ class _RendementState extends State<Rendement> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
+                      builder: (context) => mod.type == 'article'
+                          ? Historique(reference: mod.reference)
+                          : HistoriqueComposant(reference: mod.reference),
                       builder: (context) => mod.type == 'article'
                           ? Historique(reference: mod.reference)
                           : HistoriqueComposant(reference: mod.reference),
